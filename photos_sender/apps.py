@@ -9,12 +9,12 @@ class PhotosSenderConfig(AppConfig):
     bot_started = False
 
 
-    def ready(self):
-            if not self.bot_started:
-                self.bot_started = True
-                from .sender_bot import test
-
-                # הפעלת הבוט בתהליך נפרד כדי לא לחסום את שרת Django
-                bot_thread = threading.Thread(target=test)
-                bot_thread.daemon = True  # התהליך ייסגר עם סגירת השרת
-                bot_thread.start()
+    # def ready(self):
+    #         if not self.bot_started:
+    #             self.bot_started = True
+    #             from .sender_bot import send_images_to_all
+    #
+    #             # הפעלת הבוט בתהליך נפרד כדי לא לחסום את שרת Django
+    #             bot_thread = threading.Thread(target=send_images_to_all)
+    #             bot_thread.daemon = True  # התהליך ייסגר עם סגירת השרת
+    #             bot_thread.start()

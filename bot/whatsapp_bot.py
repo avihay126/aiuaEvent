@@ -70,7 +70,6 @@ def get_chat_phone(driver):
 def already_exist(phone):
     global chats
     chats = Guest.objects.all()
-    print(chats.values())
     for chat in chats:
         if chat.phone == phone:
             return chat
@@ -161,7 +160,7 @@ def save_photo(guest, face):
     selfi = SelfieImage(event=guest.event, guest=guest)
     selfi.set_encoding(face)
     selfi.save()
-    time.sleep(2)
+    time.sleep(1)
 
 
 
@@ -205,7 +204,7 @@ def close_chat(driver):
     close_chat.click()
     close_button = driver.find_element(By.XPATH, '//*[@id="app"]/div/span[5]/div/ul/div/div/li[3]/div')
     close_button.click()
-    time.sleep(2)
+    time.sleep(1)
 
 
 def check_messages():
@@ -229,7 +228,6 @@ def check_messages():
                             current_chat.save()
                 elif current_chat.stage == 1:
                     if text == "תמונה":
-                        time.sleep(1)
                         photo_element = get_photo_element(driver)
                         time.sleep(1)
                         if photo_element is not None:
@@ -241,8 +239,9 @@ def check_messages():
                 close_chat(driver)
             time.sleep(1)
         except Exception as e:
-            print(f"Error checking messages: {e}")
-            time.sleep(3)
+            # print(f"Error checking messages: {e}")
+            print("No messages found")
+            time.sleep(2)
 
     driver.quit()
 

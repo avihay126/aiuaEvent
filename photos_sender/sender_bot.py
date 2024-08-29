@@ -4,13 +4,12 @@ from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from core.models import IdGuestImage,SelfieImage,EventImageToImageGroup,ImageGroup
+from core.models import IdGuestImage, SelfieImage, EventImageToImageGroup, ImageGroup
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
-
-
 chrome_driver_path = "C:\\chromeDriver\\chromedriver.exe"
+
 
 # הגדר את ה-ChromeOptions
 def get_chrome_options():
@@ -23,13 +22,12 @@ def get_chrome_options():
 def get_chrome_service():
     return Service(executable_path=chrome_driver_path)
 
+
 def open_whatsapp(driver):
     driver.get("https://web.whatsapp.com/")
 
 
-
-
-def test():
+def send_images_to_all():
     driver = webdriver.Chrome(service=get_chrome_service(), options=get_chrome_options())
     open_whatsapp(driver)
     while True:
@@ -51,18 +49,12 @@ def test():
                         paths.append(img.event_image.path)
                         img.sent = True
                         img.save()
-                    test_image_upload(paths, selfie.guest, driver)
-        time.sleep(3)
+                    image_upload(paths, selfie.guest, driver)
+        time.sleep(2)
     driver.quit()
 
 
-
-
-
-
-def test_image_upload(image_paths, guest, driver):
-
-
+def image_upload(image_paths, guest, driver):
     # חיפוש מספר טלפון
     search_box = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.XPATH, '//div[@contenteditable="true"][@data-tab="3"]'))
@@ -71,11 +63,10 @@ def test_image_upload(image_paths, guest, driver):
     search_box.send_keys(Keys.ENTER)
     time.sleep(2)
 
-
-
     # לחיצה על כפתור ההוספה
     attach_btn = WebDriverWait(driver, 30).until(
-        EC.presence_of_element_located((By.XPATH, '//*[@id="main"]/footer/div[1]/div/span[2]/div/div[1]/div[2]/div/div'))
+        EC.presence_of_element_located(
+            (By.XPATH, '//*[@id="main"]/footer/div[1]/div/span[2]/div/div[1]/div[2]/div/div'))
     )
     time.sleep(2)
     attach_btn.click()
@@ -89,13 +80,12 @@ def test_image_upload(image_paths, guest, driver):
     time.sleep(2)
 
     send_button = WebDriverWait(driver, 30).until(
-        EC.presence_of_element_located((By.XPATH, '//*[@id="app"]/div/div[2]/div[2]/div[2]/span/div/div/div/div[2]/div/div[2]/div[2]/div/div'))
+        EC.presence_of_element_located(
+            (By.XPATH, '//*[@id="app"]/div/div[2]/div[2]/div[2]/span/div/div/div/div[2]/div/div[2]/div[2]/div/div'))
     )
     send_button.click()
     time.sleep(1)
 
-
     print("הנתיב נשלח בהצלחה לרכיב ה-input")
 
     # המתנה לבדיקה
-

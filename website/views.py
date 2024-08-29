@@ -1,10 +1,17 @@
 import os
 import threading
-
+from queue import Queue
 from django.http import HttpResponse,JsonResponse
 from core.models import Event, EventImage
 from django.views.decorators.csrf import csrf_exempt
-from face_classification.views import classify_faces
+
+from concurrent.futures import ThreadPoolExecutor
+
+
+
+
+
+
 
 
 
@@ -50,8 +57,6 @@ def add_photos(request):
                 event_image = EventImage(path=image_path, event=event)
                 event_image.save()
 
-            thread = threading.Thread(target=classify_faces, args=(event, paths))
-            thread.start()
 
 
             # אם הכל עבר בהצלחה
@@ -63,3 +68,5 @@ def add_photos(request):
 
     # אם הבקשה אינה POST
     return JsonResponse({'status': 'error', 'message': 'Only POST method allowed'}, status=405)
+
+
