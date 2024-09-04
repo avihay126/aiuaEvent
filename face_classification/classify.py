@@ -17,6 +17,9 @@ def extract_faces_and_features(image_paths):
         face_locations = face_recognition.face_locations(image)
         if not face_locations:  # בדיקה אם נמצאו פנים
             print(f"No faces found in image: {image_path}")
+            img = EventImage.objects.get(path=image_path)
+            img.is_classified = True
+            img.save()
             continue
         encodings = face_recognition.face_encodings(image, face_locations)
         for encoding in encodings:
@@ -85,13 +88,14 @@ def check_existing_clusters(clusters, ids_core,event):
 def classify_faces(event, paths):
     face_encodings, image_faces_paths = extract_faces_and_features(paths)
     print("1")
-    cluster_labels = cluster_faces(face_encodings)
-    print("2")
-    clusters = create_clusters_dictionary(face_encodings, cluster_labels, image_faces_paths)
-    print("3")
-    event_ids_core = IdGuestImage.objects.filter(image_group__event=event).all()
-    print("4")
-    check_existing_clusters(clusters, event_ids_core, event)
+    if face_encodings:
+        cluster_labels = cluster_faces(face_encodings)
+        print("2")
+        clusters = create_clusters_dictionary(face_encodings, cluster_labels, image_faces_paths)
+        print("3")
+        event_ids_core = IdGuestImage.objects.filter(image_group__event=event).all()
+        print("4")
+        check_existing_clusters(clusters, event_ids_core, event)
     print("5")
 
 
@@ -106,7 +110,9 @@ def get_unclassified_photos():
         for event in events:
             paths = EventImage.objects.filter(event=event, is_classified=False).values_list('path', flat=True)
             classify_faces(event, paths)
+
         time.sleep(2)
+        print("classifybot")
 
 
 

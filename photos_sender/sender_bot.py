@@ -7,29 +7,14 @@ from selenium.webdriver.support import expected_conditions as EC
 from core.models import IdGuestImage, SelfieImage, EventImageToImageGroup, ImageGroup
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-
-chrome_driver_path = "C:\\chromeDriver\\chromedriver.exe"
-
-
-# הגדר את ה-ChromeOptions
-def get_chrome_options():
-    chrome_options = Options()
-    chrome_options.add_argument("user-data-dir=C:\\Users\\DELL\\AppData\\Local\\Google\\Chrome\\User Data\\BOT2")
-    return chrome_options
+from bots_common_func import get_chrome_service, get_chrome_options, close_chat
 
 
-# הגדר את ה-Service של ChromeDriver
-def get_chrome_service():
-    return Service(executable_path=chrome_driver_path)
-
-
-def open_whatsapp(driver):
-    driver.get("https://web.whatsapp.com/")
-
+user_data_dir = "user-data-dir=C:\\Users\\DELL\\AppData\\Local\\Google\\Chrome\\User Data\\BOT2"
 
 def send_images_to_all():
-    driver = webdriver.Chrome(service=get_chrome_service(), options=get_chrome_options())
-    open_whatsapp(driver)
+    driver = webdriver.Chrome(service=get_chrome_service(), options=get_chrome_options(user_data_dir))
+    driver.get("https://web.whatsapp.com/")
     while True:
         unsent_id_guest_images = IdGuestImage.objects.filter(
             image_group__image_group_to_event_images__sent=False
@@ -38,10 +23,10 @@ def send_images_to_all():
             event_selfies = SelfieImage.objects.filter(event=id_guest.image_group.event)
             for selfie in event_selfies:
                 if id_guest.is_same_person(selfie.get_encoding()):
-                    id_guest.set_encoding(selfie.get_encoding())
+                    # id_guest.set_encoding(selfie.get_encoding())
                     id_guest.image_group.guest = selfie.guest
                     id_guest.image_group.save()
-                    id_guest.save()
+                    # id_guest.save()
                     unsent_images = EventImageToImageGroup.objects.filter(sent=False).filter(
                         image_group=id_guest.image_group)
                     paths = []
@@ -51,7 +36,10 @@ def send_images_to_all():
                         img.save()
                     image_upload(paths, selfie.guest, driver)
         time.sleep(2)
+
     driver.quit()
+
+
 
 
 def image_upload(image_paths, guest, driver):
@@ -87,5 +75,7 @@ def image_upload(image_paths, guest, driver):
     time.sleep(1)
 
     print("הנתיב נשלח בהצלחה לרכיב ה-input")
+    search_box.clear()
+    close_chat(driver)
 
     # המתנה לבדיקה

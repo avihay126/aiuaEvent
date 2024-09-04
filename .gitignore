@@ -1,0 +1,35 @@
+# Ignore Python bytecode files
+*.pyc
+__pycache__/
+
+# Ignore environment variables and settings files
+.env
+
+# Ignore virtual environments
+venv/
+env/
+ENV/
+.venv/
+.ENV/
+
+# Ignore Django migration files
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# Ignore Django stuff:
+staticfiles/
+media/
+
+# Ignore PyCharm project files
+.idea/
+
+# Ignore node_modules (if you have a front-end part)
+node_modules/
+
+# Ignore MacOS specific files
+.DS_Store

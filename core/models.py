@@ -57,7 +57,7 @@ class IdGuestImage(models.Model):
         # טעינה של המערך מהבינארי
         return np.frombuffer(self.face_encode, dtype=np.float32)
 
-    def is_same_person(self, other_face_encode, threshold=0.427):
+    def is_same_person(self, other_face_encode, threshold=0.45):
         distance = np.linalg.norm(self.get_encoding() - other_face_encode)
         print(f"Distance: {distance}")
         return distance < threshold

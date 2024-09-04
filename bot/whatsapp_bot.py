@@ -10,20 +10,19 @@ from selenium.webdriver.common.keys import Keys
 import time
 import os
 from core.models import Guest,Event,SelfieImage
+from bots_common_func import get_chrome_service,get_chrome_options, close_chat
 
 
 
 events = []
 chats = []
 
-# ציין את הנתיב ל-ChromeDriver שלך
-chrome_driver_path = "C:\\chromeDriver\\chromedriver.exe"
-download_dir = "C:\\AiuaPhoto\\check"
 
-# הגדר את ה-ChromeOptions
-def get_chrome_options():
-    chrome_options = Options()
-    chrome_options.add_argument("user-data-dir=C:\\Users\\DELL\\AppData\\Local\\Google\\Chrome\\User Data\\BOT1")
+download_dir = "C:\\AiuaPhoto\\check"
+user_data_dir = "user-data-dir=C:\\Users\\DELL\\AppData\\Local\\Google\\Chrome\\User Data\\BOT1"
+
+def add_chrome_prefs():
+    chrome_options = get_chrome_options(user_data_dir)
     prefs = {
         "download.default_directory": download_dir,
         "download.prompt_for_download": False,
@@ -35,8 +34,6 @@ def get_chrome_options():
 
 
 # הגדר את ה-Service של ChromeDriver
-def get_chrome_service():
-    return Service(executable_path=chrome_driver_path)
 
 def open_whatsapp(driver):
     driver.get("https://web.whatsapp.com/")
@@ -44,7 +41,13 @@ def open_whatsapp(driver):
                  EC.presence_of_element_located((By.XPATH, '//*[@id="side"]/div[2]/button[2]'))).click()
     time.sleep(2)
 
-
+def valid_phone(str):
+    if len(str) > 15:
+        phone = str[2:-1]
+        if len(phone) == 15:
+            if phone[:3].isdigit() and phone[4:6].isdigit() and phone[7:10].isdigit() and phone[11:].isdigit():
+                return True
+    return False
 
 def get_chat_phone(driver):
 
@@ -55,17 +58,21 @@ def get_chat_phone(driver):
     time.sleep(1)
     phone = None
     try:
+        phone_parent = WebDriverWait(driver, 3).until(
+            EC.presence_of_element_located((By.XPATH,
+                                            '//*[@id="app"]/div/div[2]/div[5]/span/div/span/div/div/section/div[1]/div[2]')))
+        lst = phone_parent.find_elements(By.XPATH,'./*')
+        if valid_phone(lst[0].text):
+            phone = lst[0].text[2:-1]
+        else:
+            phone = lst[1].text[2:-1]
 
-        phone = WebDriverWait(driver,3).until(
-            EC.presence_of_element_located((By.XPATH,'//*[@id="app"]/div/div[2]/div[5]/span/div/span/div/div/section/div[1]/div[2]/div/span/span')))
-        print(phone.text[2:-1])
+        print(phone)
     except Exception as e:
-        close_chat = driver.find_element(By.XPATH, '//*[@id="main"]/header/div[3]/div/div[3]/div/div/span')
-        close_chat.click()
-        close_button = driver.find_element(By.XPATH, '//*[@id="app"]/div/span[5]/div/ul/div/div/li[3]/div')
-        close_button.click()
+        print(e)
+        close_chat(driver)
 
-    return phone.text[2:-1]
+    return phone
 
 def already_exist(phone):
     global chats
@@ -115,44 +122,58 @@ def send_message(message,driver):
 
 def detect_faces(image_path):
     """Load an image file, detect faces, and extract face encodings."""
-    # טוען את התמונה מהנתיב שסופק
-    image = face_recognition.load_image_file(image_path)
+    try:
 
-    # מזהה את מיקומי הפנים בתמונה
-    face_locations = face_recognition.face_locations(image)
+        # טוען את התמונה מהנתיב שסופק
+        image = face_recognition.load_image_file(image_path)
 
-    # בדיקה אם נמצאו פנים
-    if not face_locations:
-        print(f"No faces found in image: {image_path}")
+        # מזהה את מיקומי הפנים בתמונה
+        face_locations = face_recognition.face_locations(image)
+
+        # בדיקה אם נמצאו פנים
+        if not face_locations:
+            print(f"No faces found in image: {image_path}")
+            return [], []
+
+        # מחשב את ה-encodings עבור כל פרצוף שזוהה
+        face_encodings = face_recognition.face_encodings(image, face_locations)
+
+        # מדפיס כמה פנים זוהו בתמונה
+        print(f"Detected {len(face_locations)} faces in image: {image_path}")
+    except Exception as e:
+        print("3")
+        print(e)
         return [], []
-
-    # מחשב את ה-encodings עבור כל פרצוף שזוהה
-    face_encodings = face_recognition.face_encodings(image, face_locations)
-
-    # מדפיס כמה פנים זוהו בתמונה
-    print(f"Detected {len(face_locations)} faces in image: {image_path}")
 
     return face_encodings, face_locations
 def download_photo(driver, photo_element, phone):
-    photo_element.click()
-    download_button = WebDriverWait(driver,5).until(
-        EC.presence_of_element_located((By.XPATH,'//*[@id="app"]/div/span[3]/div/div/div[2]/div/div[1]/div[2]/div/div[6]/div'))
-    )
-    download_button.click()
-    close_button = WebDriverWait(driver, 5).until(
-        EC.presence_of_element_located(
-            (By.XPATH, '//*[@id="app"]/div/span[3]/div/div/div[2]/div/div[1]/div[2]/div/div[8]/div'))
-    )
-    close_button.click()
+    final_filepath = None
+    try:
+        photo_element.click()
+        download_button = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.XPATH, '//*[@id="app"]/div/span[3]/div/div/div[2]/div/div[1]/div[2]/div/div[6]/div'))
+        )
+        download_button.click()
 
-    # שימוש בשם מספר הטלפון לשם הקובץ
-    time.sleep(3)  # להמתין שההורדה תסתיים. יש לשנות את הזמן בהתאם לצורך.
-    # שם קובץ זמני בתיקיית ההורדות
-    temp_filename = max([download_dir + "\\" + f for f in os.listdir(download_dir)], key=os.path.getctime)
-    # שינוי שם הקובץ לשם מותאם אישית
-    unique_filename = f"{phone}.JPG"
-    final_filepath = os.path.join(download_dir, unique_filename)
-    os.rename(temp_filename, final_filepath)
+        close_button = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.XPATH, '//*[@id="app"]/div/span[3]/div/div/div[2]/div/div[1]/div[2]/div/div[8]/div'))
+        )
+        close_button.click()
+
+        # שימוש בשם מספר הטלפון לשם הקובץ
+        time.sleep(3)  # להמתין שההורדה תסתיים. יש לשנות את הזמן בהתאם לצורך.
+        # שם קובץ זמני בתיקיית ההורדות
+        temp_filename = max([download_dir + "\\" + f for f in os.listdir(download_dir)], key=os.path.getctime)
+        print(temp_filename)
+        # שינוי שם הקובץ לשם מותאם אישית
+        unique_filename = f"{phone}.JPG"
+        final_filepath = os.path.join(download_dir, unique_filename)
+        os.rename(temp_filename, final_filepath)
+    except Exception as e:
+        print("2")
+        print(e)
 
     return final_filepath
 
@@ -175,40 +196,36 @@ def get_photo_element(driver):
 
 
 def check_photo(driver, photo_element, phone, guest):
-    file_path = download_photo(driver, photo_element, phone)
-    if os.path.exists(file_path):
-        print(f"File {file_path} exists.")
-        faces, location = detect_faces(file_path)
-        print(f"Number of faces detected: {len(faces)}")
-        if len(faces) == 1:
-            print("good")
-            save_photo(guest, faces[0])
-            send_message("תודה רבה! תקבל את התמונות שלך אחרי שהצלם יעלה אותן!", driver)
+    try:
+        file_path = download_photo(driver, photo_element, phone)
+        if os.path.exists(file_path):
+            print(f"File {file_path} exists.")
+            faces, location = detect_faces(file_path)
+            print(f"Number of faces detected: {len(faces)}")
+            if len(faces) == 1:
+                print("good")
+                save_photo(guest, faces[0])
+                send_message("תודה רבה! תקבל את התמונות שלך אחרי שהצלם יעלה אותן!", driver)
+                os.remove(file_path)
+                return True
+            elif len(faces) > 1:
+                print("too much faces")
+                send_message("יש יותר מפרצוף אחד. נא לשלוח תמונה עם פרצוף אחד בלבד!", driver)
+            else:
+                print("there is no face")
+                send_message("לא זוהו פנים בתמונה. נסה שנית!", driver)
             os.remove(file_path)
-            return True
-        elif len(faces) > 1:
-            print("too much faces")
-            send_message("יש יותר מפרצוף אחד. נא לשלוח תמונה עם פרצוף אחד בלבד!", driver)
         else:
-            print("there is no face")
-            send_message("לא זוהו פנים בתמונה. נסה שנית!", driver)
-        os.remove(file_path)
-    else:
-        print(f"Error: File {file_path} does not exist.")
+            print(f"Error: File {file_path} does not exist.")
+    except Exception as e:
+        print("1")
+        print(e)
     return False
 
 
 
-def close_chat(driver):
-    close_chat = driver.find_element(By.XPATH, '//*[@id="main"]/header/div[3]/div/div[3]/div/div/span')
-    close_chat.click()
-    close_button = driver.find_element(By.XPATH, '//*[@id="app"]/div/span[5]/div/ul/div/div/li[3]/div')
-    close_button.click()
-    time.sleep(1)
-
-
 def check_messages():
-    driver = webdriver.Chrome(service=get_chrome_service(), options=get_chrome_options())
+    driver = webdriver.Chrome(service=get_chrome_service(), options=add_chrome_prefs())
     open_whatsapp(driver)
     while True:
         try:
