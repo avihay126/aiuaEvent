@@ -12,6 +12,7 @@ def get_chrome_service():
 def get_chrome_options(path):
     chrome_options = Options()
     chrome_options.add_argument(path)
+
     return chrome_options
 
 def close_chat(driver):

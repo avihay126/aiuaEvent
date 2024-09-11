@@ -41,13 +41,9 @@ class EventImage(models.Model):
     is_classified = models.BooleanField(default=False)
 
 class ImageGroup(models.Model):
-
+    face_encode = models.BinaryField()
     guest = models.ForeignKey(Guest, on_delete=models.CASCADE, related_name='image_groups', null=True, blank=True)
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='event_image_groups', null=True, blank=True)
-
-class IdGuestImage(models.Model):
-    face_encode = models.BinaryField()
-    image_group = models.ForeignKey(ImageGroup, on_delete=models.CASCADE, related_name='id_guest_images')
 
     def set_encoding(self, encoding_array):
         # המרה של מערך numpy לבינארי ושמירה
@@ -61,6 +57,8 @@ class IdGuestImage(models.Model):
         distance = np.linalg.norm(self.get_encoding() - other_face_encode)
         print(f"Distance: {distance}")
         return distance < threshold
+
+
 
 class EventImageToImageGroup(models.Model):
     event_image = models.ForeignKey(EventImage, on_delete=models.CASCADE, related_name='event_image_to_groups')

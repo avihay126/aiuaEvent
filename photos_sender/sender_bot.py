@@ -4,40 +4,58 @@ from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from core.models import IdGuestImage, SelfieImage, EventImageToImageGroup, ImageGroup
+from core.models import SelfieImage, EventImageToImageGroup, ImageGroup
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from bots_common_func import get_chrome_service, get_chrome_options, close_chat
+import logging
+import logging_config
 
+logger = logging.getLogger(__name__)
 
 user_data_dir = "user-data-dir=C:\\Users\\DELL\\AppData\\Local\\Google\\Chrome\\User Data\\BOT2"
+driver = None
+
+def open_whatsapp():
+    global driver
+    try:
+        driver = webdriver.Chrome(service=get_chrome_service(), options=get_chrome_options(user_data_dir))
+        driver.get("https://web.whatsapp.com/")
+    except Exception as e:
+        logger.error(e)
 
 def send_images_to_all():
-    driver = webdriver.Chrome(service=get_chrome_service(), options=get_chrome_options(user_data_dir))
-    driver.get("https://web.whatsapp.com/")
-    while True:
-        unsent_id_guest_images = IdGuestImage.objects.filter(
-            image_group__image_group_to_event_images__sent=False
-        ).distinct()
-        for id_guest in unsent_id_guest_images:
-            event_selfies = SelfieImage.objects.filter(event=id_guest.image_group.event)
-            for selfie in event_selfies:
-                if id_guest.is_same_person(selfie.get_encoding()):
-                    # id_guest.set_encoding(selfie.get_encoding())
-                    id_guest.image_group.guest = selfie.guest
-                    id_guest.image_group.save()
-                    # id_guest.save()
-                    unsent_images = EventImageToImageGroup.objects.filter(sent=False).filter(
-                        image_group=id_guest.image_group)
-                    paths = []
-                    for img in unsent_images:
-                        paths.append(img.event_image.path)
-                        img.sent = True
-                        img.save()
-                    image_upload(paths, selfie.guest, driver)
-        time.sleep(2)
+    # driver = webdriver.Chrome(service=get_chrome_service(), options=get_chrome_options(user_data_dir))
+    # open_whatsapp(driver)
+    try:
+        global driver
+        logger.info("searching for selfies")
 
-    driver.quit()
+
+        if driver is not None:
+            unsent_images_groups = ImageGroup.objects.filter(
+                image_group_to_event_images__sent=False
+            ).distinct()
+            for group in unsent_images_groups:
+                event_selfies = SelfieImage.objects.filter(event=group.event)
+                for selfie in event_selfies:
+                    if group.is_same_person(selfie.get_encoding()):
+                        group.guest = selfie.guest
+                        group.save()
+                        unsent_images = EventImageToImageGroup.objects.filter(sent=False).filter(
+                            image_group=group)
+                        paths = []
+                        for img in unsent_images:
+                            paths.append(img.event_image.path)
+                            img.sent = True
+                            img.save()
+                        image_upload(paths, selfie.guest, driver)
+
+        else:
+            logger.info("driver is None")
+    except Exception as e:
+        logger.error(e)
+
 
 
 
@@ -74,7 +92,7 @@ def image_upload(image_paths, guest, driver):
     send_button.click()
     time.sleep(1)
 
-    print("הנתיב נשלח בהצלחה לרכיב ה-input")
+    logger.info("Photos have been sent successfully")
     search_box.clear()
     close_chat(driver)
 
