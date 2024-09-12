@@ -23,7 +23,7 @@ def extract_faces_and_features(image_paths):
                 return
             image, face_locations = get_faces(image_path)
             logger.info("num of faces: " + str(len(face_locations)) + " at " + image_path)
-            if not face_locations:  # בדיקה אם נמצאו פנים
+            if not face_locations:
                 logger.info(f"No faces found in image: {image_path}")
                 img = EventImage.objects.get(path=image_path)
                 img.is_classified = True
@@ -85,7 +85,6 @@ def check_existing_clusters(clusters, ids_core, event):
             group.set_encoding(cluster['core_face'])
             group.save()
             add_image_to_group(cluster['image_paths'], group)
-
 
 
 def classify_faces(event, paths):

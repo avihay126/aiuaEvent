@@ -20,7 +20,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('website.urls')),  # האתר הראשי תחת הנתיב הריק
+    path('', include('website.urls')),
     path('bot/', include('bot.urls')),
     path('core/', include('core.urls')),
     path('face-classification/', include('face_classification.urls')),

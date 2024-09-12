@@ -24,13 +24,11 @@ def open_whatsapp():
     except Exception as e:
         logger.error(e)
 
+
 def send_images_to_all():
-    # driver = webdriver.Chrome(service=get_chrome_service(), options=get_chrome_options(user_data_dir))
-    # open_whatsapp(driver)
     try:
         global driver
         logger.info("searching for selfies")
-
 
         if driver is not None:
             unsent_images_groups = ImageGroup.objects.filter(
@@ -57,11 +55,7 @@ def send_images_to_all():
         logger.error(e)
 
 
-
-
-
 def image_upload(image_paths, guest, driver):
-    # חיפוש מספר טלפון
     search_box = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.XPATH, '//div[@contenteditable="true"][@data-tab="3"]'))
     )
@@ -69,7 +63,6 @@ def image_upload(image_paths, guest, driver):
     search_box.send_keys(Keys.ENTER)
     time.sleep(2)
 
-    # לחיצה על כפתור ההוספה
     attach_btn = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located(
             (By.XPATH, '//*[@id="main"]/footer/div[1]/div/span[2]/div/div[1]/div[2]/div/div'))
@@ -77,7 +70,6 @@ def image_upload(image_paths, guest, driver):
     time.sleep(2)
     attach_btn.click()
     time.sleep(2)
-    # שליחת הנתיב של התמונה לרכיב ה-input
     image_input = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.XPATH, '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]'))
     )
@@ -91,9 +83,9 @@ def image_upload(image_paths, guest, driver):
     )
     send_button.click()
     time.sleep(1)
+    guest.stage = 3
+    guest.save()
 
     logger.info("Photos have been sent successfully")
     search_box.clear()
     close_chat(driver)
-
-    # המתנה לבדיקה

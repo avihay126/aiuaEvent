@@ -3,18 +3,24 @@ import numpy as np
 from django.db import models
 
 
+
 class Photographer(models.Model):
     name = models.CharField(max_length=100)
-    username = models.CharField(max_length=100, unique=True)
     password = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=20)
+    secret = models.CharField(max_length=100)
+
+
 
 class Event(models.Model):
     name = models.CharField(max_length=100)
     date = models.CharField(max_length=100)
     directory_path = models.CharField(max_length=255)
+    location = models.CharField(max_length=100)
+    qr_path = models.CharField(max_length=255)
     photographer = models.ForeignKey(Photographer, on_delete=models.CASCADE, related_name='events')
+
 
 class Guest(models.Model):
     name = models.CharField(max_length=100)
@@ -22,23 +28,24 @@ class Guest(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='guests', null=True, blank=True)
     stage = models.IntegerField(default=0)
 
+
 class SelfieImage(models.Model):
     selfi_encode = models.BinaryField()
     guest = models.OneToOneField(Guest, on_delete=models.CASCADE, related_name='selfie_image')
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='selfie_images', null=True, blank=True)
 
     def set_encoding(self, encoding_array):
-        # המרה של מערך numpy לבינארי ושמירה
         self.selfi_encode = np.array(encoding_array, dtype=np.float32).tobytes()
 
     def get_encoding(self):
-        # טעינה של המערך מהבינארי
         return np.frombuffer(self.selfi_encode, dtype=np.float32)
+
 
 class EventImage(models.Model):
     path = models.CharField(max_length=255)
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='event_event_images', null=True, blank=True)  # ייחודיות בשם
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='event_event_images', null=True, blank=True)
     is_classified = models.BooleanField(default=False)
+
 
 class ImageGroup(models.Model):
     face_encode = models.BinaryField()
@@ -46,18 +53,15 @@ class ImageGroup(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='event_image_groups', null=True, blank=True)
 
     def set_encoding(self, encoding_array):
-        # המרה של מערך numpy לבינארי ושמירה
         self.face_encode = np.array(encoding_array, dtype=np.float32).tobytes()
 
     def get_encoding(self):
-        # טעינה של המערך מהבינארי
         return np.frombuffer(self.face_encode, dtype=np.float32)
 
     def is_same_person(self, other_face_encode, threshold=0.45):
         distance = np.linalg.norm(self.get_encoding() - other_face_encode)
         print(f"Distance: {distance}")
         return distance < threshold
-
 
 
 class EventImageToImageGroup(models.Model):

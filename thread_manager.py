@@ -15,13 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 
-# הגדרת תור לפונקציות שמחכות לרוץ
+
 task_queue = queue.Queue()
 
-# מנהל הטרדים עם 3 טרדים (ניתן להגדיר כמות אחרת)
 executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 
-# משתנה לספירת תהליכים פעילים והמתנה
 active_threads = 0
 waiting_tasks = 0
 active_threads_lock = threading.Lock()
@@ -29,7 +27,7 @@ active_threads_lock = threading.Lock()
 face_lock = threading.Lock()
 encoding_lock = threading.Lock()
 
-shutdown_event = threading.Event()  # אירוע המייצג את סגירת השרת
+shutdown_event = threading.Event()
 
 
 def get_faces(image_path):
@@ -46,25 +44,19 @@ def get_encodings(image, face_locations):
 
 
 def submit_task(func, *args, **kwargs):
-    """
-    הוספת משימה לתור
-    """
     global waiting_tasks
 
-    # הוספת התהליך לתור
     task_queue.put((func, args, kwargs))
     with active_threads_lock:
         waiting_tasks += 1
         logger.info(f"Task added to queue. Waiting tasks: {waiting_tasks}")
 
-    # נסיון להריץ תהליכים מתוך התור
     execute_from_queue()
 
 
 def execute_from_queue():
     global active_threads, waiting_tasks
 
-    # נבדוק אם יש מקום להריץ תהליך נוסף
     with active_threads_lock:
         if active_threads < executor._max_workers and not shutdown_event.is_set():
             if not task_queue.empty():
@@ -73,7 +65,6 @@ def execute_from_queue():
                 active_threads += 1
                 logger.info(f"Starting task. Active threads: {active_threads}, Waiting tasks: {waiting_tasks}")
 
-                # הרצת התהליך בטרד
                 future = executor.submit(func, *args, **kwargs)
                 future.add_done_callback(task_completed)
 
@@ -81,12 +72,10 @@ def execute_from_queue():
 def task_completed(future):
     global active_threads
 
-    # כאשר התהליך מסתיים
     with active_threads_lock:
         active_threads -= 1
         logger.info(f"Task completed. Active threads: {active_threads}")
 
-    # הפעלת משימות נוספות מהתור אם יש
     execute_from_queue()
 
 
@@ -122,10 +111,8 @@ def remove_data():
                 except Exception as e:
                     logger.error(f"Error removing {file_path}: {e}")
 
+
 def shutdown_gracefully(signal_num=None, frame=None):
-    """
-    סגירה מסודרת של השרת: מונע הוספה של משימות חדשות, ומחכה לסיום כל הטרדים
-    """
     logger.info("Shutting down gracefully...")
 
     remove_data()
@@ -133,18 +120,13 @@ def shutdown_gracefully(signal_num=None, frame=None):
     with active_threads_lock:
         while not task_queue.empty():
             task_queue.get()
-    # סימון שכל המשימות יפסיקו לפעול
+
     shutdown_event.set()
-
-    # מניעת קבלת משימות חדשות
-    executor.shutdown(wait=False)  # מחכה שכל הטרדים הפעילים יסיימו
-
-    # סגירה של שאר התהליכים בתור
+    executor.shutdown(wait=False)
 
     logger.info("Server has shut down cleanly.")
     sys.exit(0)
 
 
-# קישור סיגנל של סיום התהליך לפונקציה לסגירה מסודרת
 signal.signal(signal.SIGINT, shutdown_gracefully)
 signal.signal(signal.SIGTERM, shutdown_gracefully)

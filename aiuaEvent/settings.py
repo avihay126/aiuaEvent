@@ -25,6 +25,11 @@ SECRET_KEY = 'django-insecure-d(0s(z84573xmrunn@irc*as*f!3)@%pgdl_u+cay7nj6bg4+3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'website.models.CookieAuthentication',
+    ],
+}
 
 
 
@@ -94,11 +99,11 @@ WSGI_APPLICATION = 'aiuaEvent.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'aiuaphoto',        # שם מסד הנתונים שלך
-        'USER': 'root',        # שם המשתמש שלך
-        'PASSWORD': '1234',    # סיסמת המשתמש שלך
-        'HOST': 'localhost',            # כתובת ה-Host של MySQL (בדרך כלל localhost)
-        'PORT': '3306',                 # פורט של MySQL (בדרך כלל 3306)
+        'NAME': 'aiuaphoto',
+        'USER': 'root',
+        'PASSWORD': '1234',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 

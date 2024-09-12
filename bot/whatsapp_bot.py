@@ -40,8 +40,6 @@ def add_chrome_prefs():
     return chrome_options
 
 
-# הגדר את ה-Service של ChromeDriver
-
 def open_whatsapp(driver):
     driver.get("https://web.whatsapp.com/")
     WebDriverWait(driver, 60).until(
@@ -77,7 +75,7 @@ def get_chat_phone(driver):
 
         logger.info(phone)
     except Exception as e:
-        logger.error(e)
+        logger.error("its a group")
         close_chat(driver)
 
     return phone
@@ -93,15 +91,22 @@ def already_exist(phone):
 
 
 def get_unread_chats(driver):
-    unread_chats_parent = WebDriverWait(driver, 5).until(
-        EC.presence_of_element_located((By.XPATH, '//*[@id="pane-side"]/div[1]/div/div')))
-    unread_chats = unread_chats_parent.find_elements(By.XPATH, './*')
-    return unread_chats
+    try:
+        unread_chats_parent = WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.XPATH, '//*[@id="pane-side"]/div[1]/div/div')))
+        unread_chats = unread_chats_parent.find_elements(By.XPATH, './*')
+        return unread_chats
+    except Exception as e:
+        logger.error("No messages found")
+        return []
+
 
 
 def get_current_chat(driver, chat):
     chat.click()
     phone = get_chat_phone(driver)
+    if phone is None:
+        return None
     exist = already_exist(phone)
     current_chat = None
     if exist is None:
@@ -132,23 +137,14 @@ def send_message(message, driver):
 def detect_faces(image_path):
     """Load an image file, detect faces, and extract face encodings."""
     try:
-
-        # טוען את התמונה מהנתיב שסופק
-        # image = face_recognition.load_image_file(image_path)
-
-        # מזהה את מיקומי הפנים בתמונה
-        # face_locations = face_recognition.face_locations(image)
         image, face_locations = get_faces(image_path)
 
-        # בדיקה אם נמצאו פנים
         if not face_locations:
             logger.info(f"No faces found in image: {image_path}")
             return [], []
 
-        # מחשב את ה-encodings עבור כל פרצוף שזוהה
         face_encodings = get_encodings(image, face_locations)
 
-        # מדפיס כמה פנים זוהו בתמונה
         logger.info(f"Detected {len(face_locations)} faces in image: {image_path}")
     except Exception as e:
         logger.error(e)
@@ -183,7 +179,6 @@ def download_photo(driver, photo_element, phone):
                 else:
                     break
 
-        # שינוי שם הקובץ לשם מותאם אישית
         unique_filename = f"{phone}.JPG"
         final_filepath = os.path.join(download_dir, unique_filename)
         os.rename(temp_filename, final_filepath)
@@ -240,7 +235,11 @@ def check_photo(driver, photo_element, phone, guest):
 
 
 stop_thread = threading.Event()
-
+def contains_keywords(text, keywords):
+    for word in keywords:
+        if word in text:
+            return True
+    return False
 
 def check_messages():
     global stop_thread
@@ -253,35 +252,45 @@ def check_messages():
             unread_chats = get_unread_chats(driver)
             for chat in unread_chats:
                 current_chat = get_current_chat(driver, chat)
-                text = chat.text.split("\n")[2]
-                if current_chat.stage == 0:
-                    if "aiua" in text.lower():
-                        event = get_chat_event(text)
-                        if event == None:
-                            send_message(
-                                "נא לשלוח הודעה בפורמט הבא: היי Aiua, אפשר לקבל בבקשה את התמונות שלי מ *שם האירוע* בתאריך *dd/mm/yyyy*?",
-                                driver)
-                        else:
-                            current_chat.event = event
-                            send_message("בוודאי! נא לשלוח סלפי שלך במקום מואר וברור.", driver)
-                            current_chat.stage = 1
-                            current_chat.save()
-                elif current_chat.stage == 1:
-                    if text == "תמונה":
-                        photo_element = get_photo_element(driver)
-                        time.sleep(1)
-                        if photo_element is not None:
-                            if check_photo(driver, photo_element, current_chat.phone.replace(' ', ''), current_chat):
-                                current_chat.stage = 2
+                if current_chat is not None:
+                    text = ""
+                    try:
+                        text = chat.text.split("\n")[2]
+                    except Exception as e:
+                        logger.info("emojie sent")
+                        close_chat(driver)
+                        continue
+                    if current_chat.stage == 0:
+                        if "aiua" in text.lower():
+                            event = get_chat_event(text)
+                            if event == None:
+                                send_message(
+                                    "נא לשלוח הודעה בפורמט הבא: היי Aiua, אפשר לקבל בבקשה את התמונות שלי מ *שם האירוע* בתאריך *dd/mm/yyyy*?",
+                                    driver)
+                            else:
+                                current_chat.event = event
+                                send_message("בוודאי! נא לשלוח סלפי שלך במקום מואר וברור.", driver)
+                                current_chat.stage = 1
                                 current_chat.save()
-                elif current_chat.stage == 2:
-                    send_message("לא שכחנו אותך! התמונות שלך יגיעו אליך מיד אחרי שהצלם יעלה אותן", driver)
-                close_chat(driver)
-            time.sleep(2)
+                    elif current_chat.stage == 1:
+                        if text == "תמונה":
+                            photo_element = get_photo_element(driver)
+                            time.sleep(1)
+                            if photo_element is not None:
+                                if check_photo(driver, photo_element, current_chat.phone.replace(' ', ''), current_chat):
+                                    current_chat.stage = 2
+                                    current_chat.save()
+                    elif current_chat.stage == 2:
+                        if contains_keywords(["תודה"]):
+                            send_message("בשמחה! נשלח לך את התמונות כשיהיו מוכנות", driver)
+                        elif contains_keywords(text, ["מתי","איפה","איך","מה "]):
+                            send_message("לא שכחנו אותך! התמונות שלך יגיעו אליך מיד אחרי שהצלם יעלה אותן", driver)
+                    elif current_chat.stage == 3:
+                        send_message("הצלם טרם העלה את כל התמונות, ייתכן שיש עוד תמונות שאתה מופיע בהן", driver)
+                    close_chat(driver)
+            time.sleep(3)
         except Exception as e:
-            # print(f"Error checking messages: {e}")
-
-            logger.error("No messages found")
+            logger.error(f"Error checking messages: {e}")
             time.sleep(3)
 
     driver.quit()
