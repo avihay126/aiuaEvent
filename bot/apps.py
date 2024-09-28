@@ -12,7 +12,6 @@ class BotConfig(AppConfig):
             self.bot_started = True
             from .whatsapp_bot import check_messages
 
-
             bot_thread = threading.Thread(target=check_messages)
             bot_thread.daemon = True
-            # bot_thread.start()
+            bot_thread.start()

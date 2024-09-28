@@ -44,12 +44,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'bot',
     'core',
     'face_classification',
     'photos_sender',
     'website',
-    'corsheaders'
+
 ]
 
 MIDDLEWARE = [
@@ -64,10 +65,12 @@ MIDDLEWARE = [
 ]
 
 
-CORS_ALLOW_ALL_ORIGINS = True
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'localhost:3000']
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # הכתובת של הלקוח שלך
+]
 
-CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
+CORS_ALLOW_CREDENTIALS = True
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 

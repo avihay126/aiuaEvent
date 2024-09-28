@@ -1,17 +1,21 @@
+import threading
 import time
 
 import face_recognition
+from constants import *
 
 from sklearn.cluster import DBSCAN
 
 from core.models import EventImageToImageGroup, EventImage, ImageGroup, Event
-from photos_sender.sender_bot import send_images_to_all
+from photos_sender.sender_bot import send_images_to_all, whatssup_action
 from thread_manager import submit_task, get_faces, force_shutdown, get_encodings
 import logging
 import logging_config
 
 logger = logging.getLogger(__name__)
 
+
+classify_lock = threading.Lock()
 
 def extract_faces_and_features(image_paths):
     """Extract face encodings and paths from a list of image paths."""
@@ -40,7 +44,7 @@ def extract_faces_and_features(image_paths):
 
 def cluster_faces(face_encodings):
     """Cluster face encodings using DBSCAN."""
-    clustering_model = DBSCAN(eps=0.427, min_samples=1, metric="euclidean")
+    clustering_model = DBSCAN(eps=THRESHOLD, min_samples=1, metric="euclidean")
     cluster_labels = clustering_model.fit_predict(face_encodings)
     return cluster_labels
 
@@ -88,28 +92,27 @@ def check_existing_clusters(clusters, ids_core, event):
 
 
 def classify_faces(event, paths):
-    logger.info("start classifying for : " + event.name)
-    face_encodings, image_faces_paths = extract_faces_and_features(paths)
-    print("1")
-    if face_encodings:
-        cluster_labels = cluster_faces(face_encodings)
-        print("2")
-        clusters = create_clusters_dictionary(face_encodings, cluster_labels, image_faces_paths)
-        print("3")
-        event_ids_core = ImageGroup.objects.filter(event=event).all()
-        print("4")
-        check_existing_clusters(clusters, event_ids_core, event)
-        print("5")
-        submit_task(send_images_to_all)
+    with classify_lock:
+        logger.info("start classifying for : " + event.name)
+        face_encodings, image_faces_paths = extract_faces_and_features(paths)
+        print("1")
+        if face_encodings:
+            cluster_labels = cluster_faces(face_encodings)
+            print("2")
+            clusters = create_clusters_dictionary(face_encodings, cluster_labels, image_faces_paths)
+            print("3")
+            event_ids_core = ImageGroup.objects.filter(event=event).all()
+            print("4")
+            check_existing_clusters(clusters, event_ids_core, event)
+            print("5")
+            send_images_to_all()
 
 
-def get_unclassified_photos():
+def event_locking(event):
     logger.info("start classify all")
-    events = Event.objects.filter(
-        event_event_images__is_classified=False
-    ).distinct()
-    for event in events:
-        paths = EventImage.objects.filter(event=event, is_classified=False).values_list('path', flat=True)
-        classify_faces(event, paths)
-
+    paths = EventImage.objects.filter(event=event, is_classified=False).values_list('path', flat=True)
+    classify_faces(event, paths)
     logger.info("all photos have been classified")
+    whatssup_action(event=event)
+
+

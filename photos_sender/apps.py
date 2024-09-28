@@ -14,4 +14,4 @@ class PhotosSenderConfig(AppConfig):
         if not self.bot_started:
             self.bot_started = True
             from .sender_bot import open_whatsapp
-            # submit_task(open_whatsapp)
+            submit_task(open_whatsapp)

@@ -4,31 +4,56 @@ import qrcode
 import urllib.parse
 import cv2
 import numpy as np
+from corsheaders.middleware import CorsMiddleware
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from PIL import Image, ExifTags
 from django.views.decorators.http import require_POST
+from django.http import FileResponse, Http404
+from rest_framework.decorators import api_view
+from constants import *
 
 from core.models import Event, EventImage, Photographer
 from thread_manager import submit_task
-from face_classification.classify import classify_faces
+from face_classification.classify import classify_faces, event_locking
 from django.core.exceptions import ValidationError
 from datetime import datetime
 import logging
 import logging_config
+from core.serializers import EventSerializer, PhotographerSerializer
 
 logger = logging.getLogger(__name__)
 
-main_dir = "C:\\AiuaPhoto\\"
-qrs_dir = f"{main_dir}aiua_QR"
 
 
 
 
+@api_view(['GET'])
 def get_events(request):
-    events = Event.objects.all()
-    events_list = list(events.values())
-    return JsonResponse(events_list, safe=False)
+    photographer = get_token(request)
+    events = Event.objects.filter(photographer=photographer)
+    serializer = EventSerializer(events, many=True)
+    return JsonResponse(serializer.data, safe=False, status=200)
+
+
+@api_view(['GET'])
+def get_user_details(request):
+    photographer = get_token(request)
+    serializer = PhotographerSerializer(photographer)
+    return JsonResponse(serializer.data, safe=False, status=200)
+
+
+def get_token(request):
+    token = request.COOKIES.get('auth_token')
+
+    if not token:
+        return JsonResponse({'error': 'Authentication token missing'}, status=401)
+
+    try:
+        photographer = Photographer.objects.get(secret=token)
+    except Photographer.DoesNotExist:
+        return JsonResponse({'error': 'Invalid token or photographer not found'}, status=401)
+    return photographer
 
 
 def correct_orientation(img):
@@ -58,7 +83,7 @@ def resize_image(image_file, max_size=(1500, 1500), quality=90, max_file_size_kb
 
             width, height = img.size
             if file_size_kb <= max_file_size_kb and width <= max_size[0] and height <= max_size[1]:
-                image_data.seek(0)  # Rewind to the beginning for return
+                image_data.seek(0)
                 return io.BytesIO(image_data.getvalue())
 
             img = correct_orientation(img)
@@ -69,7 +94,6 @@ def resize_image(image_file, max_size=(1500, 1500), quality=90, max_file_size_kb
             buffer.seek(0)
 
     return buffer
-
 
 
 def process_images(event, files, upload_directory, start_index):
@@ -106,7 +130,7 @@ def add_photos(request):
             event_id = request.GET.get('event-id')
             event = Event.objects.get(id=event_id)
 
-            upload_directory = os.path.join(main_dir, "photographer_" + str(event.photographer.id),
+            upload_directory = os.path.join(MAIN_DIR, "photographer_" + str(event.photographer.id),
                                             event.directory_path)
             if not os.path.exists(upload_directory):
                 os.makedirs(upload_directory)
@@ -132,13 +156,14 @@ def create_event(request):
         name = request.POST.get('name')
         date_str = request.POST.get('date')
         location = request.POST.get('location')
-        photographer_id = request.POST.get('photographer_id')
+        photographer = get_token(request)
+        photographer_id = photographer.id
 
         if not name or not date_str or not location or not photographer_id:
             return JsonResponse({'error': 'All fields are required: name, date, location, photographer_id'}, status=400)
 
         try:
-            date = datetime.strptime(date_str, '%d/%m/%Y').strftime('%d/%m/%Y')
+            date = set_date_format(date_str)
         except ValueError:
             return JsonResponse({'error': 'Invalid date format. Expected format: dd/mm/yyyy'}, status=400)
 
@@ -152,8 +177,10 @@ def create_event(request):
         event.directory_path = create_event_dir(event, photographer_id)
         event.qr_path = create_qr(event)
         event.save()
+        events = Event.objects.filter(photographer=photographer)
+        serializer = EventSerializer(events, many=True)
 
-        return JsonResponse({'success': 'Event created successfully!', 'event_id': event.id}, status=201)
+        return JsonResponse({'success': 'Event created successfully!', 'events': serializer.data}, status=201)
 
     except ValidationError as e:
         return JsonResponse({'error': f'Validation error: {str(e)}'}, status=400)
@@ -161,9 +188,9 @@ def create_event(request):
         return JsonResponse({'error': f'An error occurred: {str(e)}'}, status=500)
 
 
-def create_event_dir(event,photographer_id):
+def create_event_dir(event, photographer_id):
     event_dir = f'event_{event.id}'
-    path_to_dir = os.path.join(main_dir, f'photographer_{photographer_id}', event_dir)
+    path_to_dir = os.path.join(MAIN_DIR, f'photographer_{photographer_id}', event_dir)
 
     try:
         if not os.path.exists(path_to_dir):
@@ -175,7 +202,7 @@ def create_event_dir(event,photographer_id):
 
 
 def create_qr(event):
-    phone_number = "972502957804"
+    phone_number = QR_PHONE
     message = f"היי AIUA, אפשר לקבל בבקשה את התמונות שלי מ{event.name} בתאריך {event.date}?"
     encoded_message = urllib.parse.quote(message)
     whatsapp_url = f"https://wa.me/{phone_number}?text={encoded_message}"
@@ -192,9 +219,44 @@ def create_qr(event):
     img = np.array(img)
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
-    if not os.path.exists(qrs_dir):
-        os.makedirs(qrs_dir)
-    file_path = os.path.join(qrs_dir, f'event_{event.id}_whatsapp_qr.png')
+    if not os.path.exists(QRS_DIR):
+        os.makedirs(QRS_DIR)
+    file_path = os.path.join(QRS_DIR, f'event_{event.id}_whatsapp_qr.png')
     cv2.imwrite(file_path, img)
     print(f"QR SAVED! {file_path}")
     return file_path
+
+
+def get_qr(request):
+    try:
+        event_id = request.GET.get('event-id')
+        event = Event.objects.get(id=event_id)
+        qr_path = event.qr_path
+        if os.path.exists(qr_path):
+            return FileResponse(open(qr_path, 'rb'), content_type='image/jpeg')
+        else:
+            raise Http404('Image not found')
+    except Event.DoesNotExist:
+        raise Http404('Event not found')
+
+
+def set_date_format(date_str):
+    date_lst = date_str.split('-')
+    date = date_lst[2] + "/" + date_lst[1] + "/" + date_lst[0]
+    return date
+
+
+@api_view(['GET'])
+def lock_event(request):
+    try:
+        event_id = request.GET.get('event-id')
+        event = Event.objects.get(id=event_id)
+        submit_task(event_locking, event)
+        event.is_open = False
+        event.save()
+        serializer = EventSerializer(event).data
+        return JsonResponse({'success': 'event locked', 'event': serializer}, status=201)
+    except Exception as e:
+        return JsonResponse({'error': 'action faild'}, status=401)
+
+

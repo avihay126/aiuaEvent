@@ -17,21 +17,18 @@ from photos_sender.sender_bot import send_images_to_all
 from thread_manager import submit_task, get_faces, force_shutdown, get_encodings
 import logging
 import logging_config
-
+from constants import *
 
 logger = logging.getLogger(__name__)
 
 events = []
 chats = []
 
-download_dir = "C:\\AiuaPhoto\\check"
-user_data_dir = "user-data-dir=C:\\Users\\DELL\\AppData\\Local\\Google\\Chrome\\User Data\\BOT1"
-
 
 def add_chrome_prefs():
-    chrome_options = get_chrome_options(user_data_dir)
+    chrome_options = get_chrome_options(DATA_DIR_BOT_1)
     prefs = {
-        "download.default_directory": download_dir,
+        "download.default_directory": DOWNLOAD_DIR,
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
         "safebrowsing.enabled": True
@@ -103,6 +100,7 @@ def get_unread_chats(driver):
 
 
 def get_current_chat(driver, chat):
+    time.sleep(1)
     chat.click()
     phone = get_chat_phone(driver)
     if phone is None:
@@ -147,7 +145,7 @@ def detect_faces(image_path):
 
         logger.info(f"Detected {len(face_locations)} faces in image: {image_path}")
     except Exception as e:
-        logger.error(e)
+        logger.error(e, exc_info=True)
         return [], []
 
     return face_encodings, face_locations
@@ -171,7 +169,7 @@ def download_photo(driver, photo_element, phone):
 
         for i in range(3):
             time.sleep(1)
-            files = glob.glob(os.path.join(download_dir, "*"))
+            files = glob.glob(os.path.join(DOWNLOAD_DIR, "*"))
             if files:
                 temp_filename = max(files, key=os.path.getctime)
                 if temp_filename.endswith(".crdownload"):
@@ -180,10 +178,10 @@ def download_photo(driver, photo_element, phone):
                     break
 
         unique_filename = f"{phone}.JPG"
-        final_filepath = os.path.join(download_dir, unique_filename)
+        final_filepath = os.path.join(DOWNLOAD_DIR, unique_filename)
         os.rename(temp_filename, final_filepath)
     except Exception as e:
-        logger.error(e)
+        logger.error(e, exc_info=True)
 
     return final_filepath
 
@@ -196,7 +194,11 @@ def save_photo(guest, face):
 
 
 def get_photo_element(driver):
-    message_list_parent = driver.find_element(By.XPATH, '//*[@id="main"]/div[3]/div/div[2]/div[3]')
+    time.sleep(1)
+    message_list_parent = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located(
+            (By.XPATH, '//*[@id="main"]/div[3]/div/div[2]/div[3]'))
+    )
     message_list = message_list_parent.find_elements(By.XPATH, './*')
     last_message = message_list[-1]
     image = last_message.find_elements(By.CSS_SELECTOR,
@@ -216,7 +218,7 @@ def check_photo(driver, photo_element, phone, guest):
             if len(faces) == 1:
                 logger.info("good")
                 save_photo(guest, faces[0])
-                send_message("תודה רבה! תקבל את התמונות שלך אחרי שהצלם יעלה אותן!", driver)
+                send_message("תודה רבה! נשלח לך את התמונות כשהצלם יעלה אותן!", driver)
                 os.remove(file_path)
                 submit_task(send_images_to_all)
                 return True
@@ -230,11 +232,11 @@ def check_photo(driver, photo_element, phone, guest):
         else:
             logger.info(f"Error: File {file_path} does not exist.")
     except Exception as e:
-        logger.info(e)
+        logger.error(e, exc_info=True)
     return False
 
 
-stop_thread = threading.Event()
+
 def contains_keywords(text, keywords):
     for word in keywords:
         if word in text:
@@ -242,7 +244,6 @@ def contains_keywords(text, keywords):
     return False
 
 def check_messages():
-    global stop_thread
     driver = webdriver.Chrome(service=get_chrome_service(), options=add_chrome_prefs())
     open_whatsapp(driver)
     while True:
@@ -290,7 +291,7 @@ def check_messages():
                     close_chat(driver)
             time.sleep(3)
         except Exception as e:
-            logger.error(f"Error checking messages: {e}")
+            logger.error(f"error", exc_info=True)
             time.sleep(3)
 
     driver.quit()

@@ -11,6 +11,7 @@ def get_chrome_service():
 
 def get_chrome_options(path):
     chrome_options = Options()
+    chrome_options.add_argument("--headless")
     chrome_options.add_argument(path)
 
     return chrome_options
@@ -18,6 +19,6 @@ def get_chrome_options(path):
 def close_chat(driver):
     close_chat = driver.find_element(By.XPATH, '//*[@id="main"]/header/div[3]/div/div[3]/div/div/span')
     close_chat.click()
+    time.sleep(1)
     close_button = driver.find_element(By.XPATH, '//*[@id="app"]/div/span[5]/div/ul/div/div/li[3]/div')
     close_button.click()
-    time.sleep(1)

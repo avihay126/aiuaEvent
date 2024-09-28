@@ -1,11 +1,12 @@
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from django.contrib.auth.hashers import check_password
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password,check_password
 from core.models import Photographer
 import re
 import uuid
+
 
 def validate_name(name):
     pattern = r'^[A-Za-zא-ת ]+$'
@@ -76,8 +77,6 @@ def register_photographer(request):
     return Response({'message': 'Registration successful'}, status=status.HTTP_201_CREATED)
 
 
-
-
 @api_view(['POST'])
 def login_photographer(request):
     email = request.data.get('email')
@@ -92,17 +91,15 @@ def login_photographer(request):
         return Response({'error': 'Invalid email or password'}, status=status.HTTP_400_BAD_REQUEST)
 
     if check_password(password, photographer.password):
-
         token = str(uuid.uuid4())
         photographer.secret = token
         photographer.save()
 
         response = Response({'message': 'Login successful'}, status=status.HTTP_200_OK)
-        response.set_cookie(key='auth_token', value=token, httponly=True, secure=True)
+        response.set_cookie(key='auth_token', value=token)
         return response
 
     return Response({'error': 'Invalid email or password'}, status=status.HTTP_400_BAD_REQUEST)
-
 
 
 @api_view(['POST'])
@@ -110,3 +107,5 @@ def logout_photographer(request):
     response = Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
     response.delete_cookie('auth_token')
     return response
+
+

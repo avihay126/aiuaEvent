@@ -1,6 +1,7 @@
 
 import numpy as np
 from django.db import models
+from constants import *
 
 
 
@@ -20,6 +21,7 @@ class Event(models.Model):
     location = models.CharField(max_length=100)
     qr_path = models.CharField(max_length=255)
     photographer = models.ForeignKey(Photographer, on_delete=models.CASCADE, related_name='events')
+    is_open = models.BooleanField(default=True)
 
 
 class Guest(models.Model):
@@ -58,7 +60,7 @@ class ImageGroup(models.Model):
     def get_encoding(self):
         return np.frombuffer(self.face_encode, dtype=np.float32)
 
-    def is_same_person(self, other_face_encode, threshold=0.45):
+    def is_same_person(self, other_face_encode, threshold=THRESHOLD):
         distance = np.linalg.norm(self.get_encoding() - other_face_encode)
         print(f"Distance: {distance}")
         return distance < threshold
