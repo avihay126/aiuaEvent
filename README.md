@@ -1,4 +1,3 @@
-```markdown
 # Face Recognition Event Bot
 
 This project is a facial recognition system designed for events. Guests at an event can scan a QR code to open a WhatsApp chat with a bot, send a selfie, and later receive all the photos in which they appear directly through WhatsApp. The system uses advanced machine learning algorithms and facial recognition libraries to classify and deliver the photos.
@@ -25,19 +24,19 @@ This project is a facial recognition system designed for events. Guests at an ev
 
 ### 1. Clone the Repository
 ```bash
-$ git clone https://github.com/avihay126/aiuaEvent.git
-$ cd aiuaEvent
+git clone https://github.com/avihay126/aiuaEvent.git
+cd aiuaEvent
 ```
 
 ### 2. Set Up a Virtual Environment
 ```bash
-$ python -m venv venv
-$ source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
 ```
 
 ### 3. Install Dependencies
 ```bash
-$ pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ### 4. Set Up the Database
@@ -46,8 +45,8 @@ $ pip install -r requirements.txt
 
 ### 5. Run Migrations
 ```bash
-$ python manage.py makemigrations
-$ python manage.py migrate
+python manage.py makemigrations
+python manage.py migrate
 ```
 
 ### 6. Add Selenium and ChromeDriver Paths
@@ -55,7 +54,7 @@ $ python manage.py migrate
 
 ### 7. Start the Server
 ```bash
-$ python manage.py runserver
+python manage.py runserver
 ```
 The server will be available at `http://127.0.0.1:8000/`.
 
@@ -96,5 +95,4 @@ Contributions are welcome! To contribute:
 
 ## License
 This project is licensed under the MIT License. See the `LICENSE` file for details.
-```
 
