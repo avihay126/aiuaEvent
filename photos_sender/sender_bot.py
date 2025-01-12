@@ -9,7 +9,10 @@ from core.models import SelfieImage, EventImageToImageGroup, ImageGroup,Guest
 from constants import *
 from bots_common_func import get_chrome_service, get_chrome_options, close_chat
 import logging
-
+import requests
+from io import BytesIO
+from constants import TEMP_PATH
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +109,47 @@ def send_message(message, driver):
     message_box.send_keys(message)
     message_box.send_keys(Keys.ENTER)
     time.sleep(1)
+
+def import_url_to_unique_paths(urls):
+    """
+    Accepts a list of URLs, downloads the content, saves it to unique paths on the computer,
+    and returns a list of paths.
+    """
+    download_dir = TEMP_PATH
+    if not os.path.exists(download_dir):
+        os.makedirs(download_dir)
+
+    paths = []
+    index = 0
+    for url in urls:
+        response = requests.get(url)
+        image_data = BytesIO(response.content)
+        unique_filename = f"img{index}.jpg"
+        unique_path = os.path.join(download_dir, unique_filename)
+        with open(unique_path, "wb") as temp_file:
+            temp_file.write(image_data.getbuffer())
+        paths.append(unique_path)
+        index += 1
+    return paths
+
+
+def clear_temp_folder():
+        """
+        Removes all files in the TEMP_PATH directory.
+        """
+        for filename in os.listdir(TEMP_PATH):
+            file_path = os.path.join(TEMP_PATH, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                logger.error(f'Failed to delete {file_path}. Reason: {e}')
+
+
 def image_upload(image_paths, guest, driver):
+    image_paths = import_url_to_unique_paths(image_paths)
     open_chat_with_guest(guest.phone,driver)
     time.sleep(1)
     attach_btn = WebDriverWait(driver, 30).until(
@@ -130,6 +173,7 @@ def image_upload(image_paths, guest, driver):
     )
     send_button.click()
     time.sleep(1)
+    clear_temp_folder()
     if not guest.event.is_open:
         time.sleep(1)
         send_message("תודה שהשתתפת באירוע שלנו! מקווים שנהנת, צוות AIUA", driver)

@@ -7,12 +7,12 @@ THRESHOLD = 0.427
 
 QR_PHONE = "972502957804"
 
-MAIN_DIR = "C:\\AiuaPhoto\\"
+MAIN_DIR = "AiuaPhoto/"
 QRS_DIR = f"{MAIN_DIR}aiua_QR"
+TEMP_PATH = "Users/admin/Documents/aiuaPhoto/temp"
 
+DOWNLOAD_DIR = f"Users/admin/Documents/aiuaPhoto/check"
 
-DOWNLOAD_DIR = f"{MAIN_DIR}check"
+DATA_DIR_BOT_1 = "user-data-dir=/Users/admin/Library/Application Support/Google/Chrome/BOT1"
 
-DATA_DIR_BOT_1 = "user-data-dir=C:\\Users\\DELL\\AppData\\Local\\Google\\Chrome\\User Data\\BOT1"
-
-DATA_DIR_BOT_2 = "user-data-dir=C:\\Users\\DELL\\AppData\\Local\\Google\\Chrome\\User Data\\BOT2"
+DATA_DIR_BOT_2 = "user-data-dir=/Users/admin/Library/Application Support/Google/Chrome/BOT2"

@@ -21,6 +21,13 @@ from datetime import datetime
 import logging
 import logging_config
 from core.serializers import EventSerializer, PhotographerSerializer
+from s3_service import upload_image_to_s3, get_s3_client
+
+
+s3_client = get_s3_client()
+
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -111,11 +118,10 @@ def process_images(event, files, upload_directory, start_index):
 
             image_path = os.path.join(upload_directory, f'img_{index}.jpg')
 
-            with open(image_path, 'wb') as destination:
-                destination.write(resized_image.getvalue())
+            url = upload_image_to_s3(image_path, resized_image, s3_client)
 
-            EventImage.objects.create(path=image_path, event=event)
-            paths.append(image_path)
+            EventImage.objects.create(path=url, event=event)
+            paths.append(url)
             index += 1
 
         submit_task(classify_faces, event, paths)
@@ -129,16 +135,10 @@ def add_photos(request):
         try:
             event_id = request.GET.get('event-id')
             event = Event.objects.get(id=event_id)
-
-            upload_directory = os.path.join(MAIN_DIR, "photographer_" + str(event.photographer.id),
-                                            event.directory_path)
-            if not os.path.exists(upload_directory):
-                os.makedirs(upload_directory)
-
             index = EventImage.objects.filter(event=event).count()
 
             files_copy = {key: io.BytesIO(file.read()) for key, file in request.FILES.items()}
-            submit_task(process_images, event, files_copy, upload_directory, index)
+            submit_task(process_images, event, files_copy, event.directory_path, index)
 
             return JsonResponse(
                 {'status': 'success', 'message': 'Images uploaded successfully, processing in background!'})
@@ -191,14 +191,7 @@ def create_event(request):
 def create_event_dir(event, photographer_id):
     event_dir = f'event_{event.id}'
     path_to_dir = os.path.join(MAIN_DIR, f'photographer_{photographer_id}', event_dir)
-
-    try:
-        if not os.path.exists(path_to_dir):
-            os.makedirs(path_to_dir)
-        return event_dir
-    except Exception as e:
-        logger.error(f"Error creating directory for event {event.id}: {e}")
-        return None
+    return path_to_dir
 
 
 def create_qr(event):
@@ -219,12 +212,17 @@ def create_qr(event):
     img = np.array(img)
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
-    if not os.path.exists(QRS_DIR):
-        os.makedirs(QRS_DIR)
+
+    is_success, buffer = cv2.imencode(".png", img)
+    if not is_success:
+        raise Exception("Failed to encode QR code image to PNG format")
+    
+    image_io = io.BytesIO(buffer.tobytes())
     file_path = os.path.join(QRS_DIR, f'event_{event.id}_whatsapp_qr.png')
-    cv2.imwrite(file_path, img)
+    url = upload_image_to_s3(file_path, image_io, s3_client)
+
     print(f"QR SAVED! {file_path}")
-    return file_path
+    return url
 
 
 def get_qr(request):

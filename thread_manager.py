@@ -6,7 +6,9 @@ import queue
 import time
 import signal
 import sys
-
+import requests
+import numpy as np
+from io import BytesIO
 import face_recognition
 import logging
 import logging_config
@@ -32,7 +34,10 @@ shutdown_event = threading.Event()
 
 def get_faces(image_path):
     with face_lock:
-        image = face_recognition.load_image_file(image_path)
+        response = requests.get(image_path)
+        response.raise_for_status() 
+        image = np.array(face_recognition.load_image_file(BytesIO(response.content)))
+        # image = face_recognition.load_image_file(image_path)
         face_locations = face_recognition.face_locations(image)
     return image, face_locations
 
